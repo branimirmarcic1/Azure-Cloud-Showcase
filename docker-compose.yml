@@ -1,0 +1,50 @@
+services:
+  # SQL Server za lokalni razvoj
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: showcase-db
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=yourStrong(!)Password123
+    ports:
+      - "1433:1433"
+
+  # RabbitMQ kao lokalna zamjena za Azure Service Bus
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: showcase-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      
+  # MongoDB kao lokalna zamjena za Azure Cosmos DB
+  mongo:
+    image: mongo:latest
+    container_name: showcase-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  # Prometheus za prikupljanje metrika
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: showcase-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+
+  # Grafana za vizualizaciju metrika
+  grafana:
+    image: grafana/grafana:latest
+    container_name: showcase-grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  mongo-data:
+  prometheus-data:
