@@ -1,0 +1,33 @@
+name: Deploy to Azure
+
+on:
+  push:
+    branches:
+      - main # Pokreni na push u main granu
+  workflow_dispatch: # Omogućuje ručno pokretanje
+
+env:
+  ACR_NAME: showcaseacrbm123 # OBAVEZNO: Zamijenite s imenom vašeg ACR-a
+  RESOURCE_GROUP: AzureShowcase-RG
+  AKS_CLUSTER_NAME: showcase-aks-cluster
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Build and push OrderService image
+        run: |
+          # ISPRAVAK: Gradimo iz korijena repozitorija (.) i specificiramo putanju do Dockerfile-a (-f)
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/orderservice:${{ github.sha }} -f ./src/OrderService/Dockerfile .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/orderservice:${{ github.sha }}
