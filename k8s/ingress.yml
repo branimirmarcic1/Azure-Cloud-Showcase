@@ -3,8 +3,8 @@ kind: Ingress
 metadata:
   name: orderservice-ingress
   annotations:
-    # Koristimo standardni Ingress kontroler koji dolazi s AKS-om
-    kubernetes.io/ingress.class: "addon-http-application-routing"
+    # ISPRAVAK: Koristimo novi, moderni ingress class za Application Routing
+    kubernetes.io/ingress.class: "webapp/routing"
 spec:
   rules:
   - http:
