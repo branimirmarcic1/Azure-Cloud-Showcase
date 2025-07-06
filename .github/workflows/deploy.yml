@@ -28,6 +28,5 @@ jobs:
 
       - name: Build and push OrderService image
         run: |
-          # ISPRAVAK: Gradimo iz korijena repozitorija (.) i specificiramo putanju do Dockerfile-a (-f)
           docker build -t ${{ env.ACR_NAME }}.azurecr.io/orderservice:${{ github.sha }} -f ./src/OrderService/Dockerfile .
           docker push ${{ env.ACR_NAME }}.azurecr.io/orderservice:${{ github.sha }}
