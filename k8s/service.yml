@@ -3,7 +3,9 @@ kind: Service
 metadata:
   name: orderservice-service
 spec:
-  type: ClusterIP
+  # ISPRAVAK: Mijenjamo tip servisa u LoadBalancer.
+  # Ovo će automatski kreirati javni Load Balancer na Azureu i dodijeliti mu IP adresu.
+  type: LoadBalancer 
   selector:
     app: orderservice
   ports:
