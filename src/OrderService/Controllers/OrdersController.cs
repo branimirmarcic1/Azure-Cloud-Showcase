@@ -1,9 +1,12 @@
-﻿using Contracts;
+﻿using System.Net.Http.Json;
 using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 using OrderService.Data;
 using OrderService.DTOs;
 using OrderService.Models;
+using Contracts; // <-- DODAJTE OVAJ USING
+
+namespace OrderService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -27,7 +30,12 @@ public class OrdersController : ControllerBase
 
         try
         {
-            var requestBody = new { createOrderDto.ProductName, createOrderDto.Quantity };
+            // ISPRAVAK: Koristimo snažno tipizirani objekt iz Contracts projekta
+            var requestBody = new StockReductionRequest
+            {
+                ProductName = createOrderDto.ProductName,
+                Quantity = createOrderDto.Quantity
+            };
             var response = await inventoryClient.PostAsJsonAsync("/api/inventory/reduce", requestBody);
 
             if (!response.IsSuccessStatusCode)

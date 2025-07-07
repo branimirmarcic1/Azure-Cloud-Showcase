@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using InventoryService.Data;
 using InventoryService.Models;
+using Contracts;
 
 namespace InventoryService.Controllers;
 
@@ -54,10 +55,4 @@ public class InventoryController : ControllerBase
 
         return Ok();
     }
-}
-
-public class StockReductionRequest
-{
-    public string ProductName { get; set; }
-    public int Quantity { get; set; }
 }
