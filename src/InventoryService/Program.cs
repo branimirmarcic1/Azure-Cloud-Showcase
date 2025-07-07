@@ -39,6 +39,7 @@ if (!string.IsNullOrEmpty(connectionString))
     {
         using var scope = app.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
+        await Task.Delay(5000);
         await dbContext.Database.MigrateAsync();
     }
     catch (Exception ex)
