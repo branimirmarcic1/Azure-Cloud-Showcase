@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventoryservice-service
+spec:
+  type: ClusterIP # Interni servis, ne treba javnu IP adresu
+  selector:
+    app: inventoryservice
+  ports:
+  - port: 80
+    targetPort: 8080

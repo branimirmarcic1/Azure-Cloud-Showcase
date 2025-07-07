@@ -41,7 +41,7 @@ builder.Services.AddMassTransit(x =>
 
 builder.Services.AddHttpClient("InventoryClient", client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7191");
+    client.BaseAddress = new Uri("http://inventoryservice-service");
 })
 .AddTransientHttpErrorPolicy(policyBuilder =>
     policyBuilder.WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)))
