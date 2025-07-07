@@ -60,11 +60,17 @@ jobs:
 
       - name: Deploy to AKS
         run: |
-          # ISPRAVAK: Prvo primjenjujemo SecretProviderClass i čekamo
-          kubectl apply -f ./k8s/secret-provider.yml
-          sleep 15
+          # FINALNI ISPRAVAK: Eksplicitno čekamo da CRD bude spreman
           
-          # Zatim primjenjujemo ostatak manifesta
+          # Korak 1: Primijeni SecretProviderClass
+          kubectl apply -f ./k8s/secret-provider.yml
+          
+          # Korak 2: Čekaj do 60 sekundi da se SecretProviderClass "ustabili" u klasteru
+          kubectl wait --for=condition=established --timeout=60s crd/secretproviderclasses.secrets-store.csi.x-k8s.io
+          
+          echo "SecretProviderClass CRD je spreman. Nastavljam s deploymentom..."
+          
+          # Korak 3: Primijeni ostatak manifesta
           kubectl apply -f ./k8s/deployment.yml
           kubectl apply -f ./k8s/service.yml
           kubectl apply -f ./k8s/inventory-deployment.yml
