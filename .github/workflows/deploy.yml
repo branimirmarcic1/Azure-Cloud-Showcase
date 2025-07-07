@@ -58,19 +58,24 @@ jobs:
           sed -i 's|__ACR_NAME__|${{ env.ACR_NAME }}|g' ./k8s/inventory-deployment.yml
           sed -i 's|__IMAGE_TAG__|${{ github.sha }}|g' ./k8s/inventory-deployment.yml
 
-      - name: Deploy to AKS
+      - name: Deploy to AKS with Retry
         run: |
-          # FINALNI ISPRAVAK: Eksplicitno čekamo da CRD bude spreman
+          # FINALNI ISPRAVAK: Koristimo petlju za ponovne pokušaje
+          # Ovo rješava "race condition" gdje CRD još nije spreman.
           
-          # Korak 1: Primijeni SecretProviderClass
+          echo "Pokušavam primijeniti SecretProviderClass..."
+          for i in {1..5}; do
+            kubectl apply -f ./k8s/secret-provider.yml && break
+            echo "Čekam da SecretProviderClass CRD bude dostupan... (Pokušaj $i od 5)"
+            sleep 20
+          done
+          
+          # Finalna provjera - ako i dalje ne uspije, workflow će pasti s jasnom greškom
           kubectl apply -f ./k8s/secret-provider.yml
           
-          # Korak 2: Čekaj do 60 sekundi da se SecretProviderClass "ustabili" u klasteru
-          kubectl wait --for=condition=established --timeout=60s crd/secretproviderclasses.secrets-store.csi.x-k8s.io
+          echo "SecretProviderClass uspješno primijenjen. Nastavljam s ostatkom deploymenta..."
           
-          echo "SecretProviderClass CRD je spreman. Nastavljam s deploymentom..."
-          
-          # Korak 3: Primijeni ostatak manifesta
+          # Primjenjujemo ostatak manifesta
           kubectl apply -f ./k8s/deployment.yml
           kubectl apply -f ./k8s/service.yml
           kubectl apply -f ./k8s/inventory-deployment.yml
