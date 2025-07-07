@@ -56,4 +56,8 @@ public class InventoryController : ControllerBase
     }
 }
 
-public record StockReductionRequest(string ProductName, int Quantity);
+public class StockReductionRequest
+{
+    public string ProductName { get; set; }
+    public int Quantity { get; set; }
+}
