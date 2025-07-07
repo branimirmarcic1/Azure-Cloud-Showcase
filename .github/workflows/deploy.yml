@@ -1,4 +1,3 @@
-name: Build and Deploy to Azure AKS
 
 on:
   push:
@@ -60,9 +59,12 @@ jobs:
 
       - name: Deploy to AKS
         run: |
-          # FINALNI ISPRAVAK: Ručno instaliramo CRD-ove za Secret Store CSI Driver
-          echo "Instaliram potrebne CRD-ove za Secret Store..."
-          curl -sSL https://raw.githubusercontent.com/Azure/secrets-store-csi-driver-provider-azure/main/charts/csi-secrets-store-provider-azure/crds/csi.secrets-store.k8s.io_secretproviderclasses.yaml | kubectl apply -f -
+          # FINALNI ISPRAVAK: Prvo preuzimamo CRD, a zatim ga primjenjujemo
+          echo "Preuzimam potrebne CRD-ove za Secret Store..."
+          curl -sSL -o secretproviderclasses.yaml "https://raw.githubusercontent.com/Azure/secrets-store-csi-driver-provider-azure/main/charts/csi-secrets-store-provider-azure/crds/csi.secrets-store.k8s.io_secretproviderclasses.yaml"
+          
+          echo "Primjenjujem CRD..."
+          kubectl apply -f secretproviderclasses.yaml
           
           # Čekamo da se CRD "ustabili" u klasteru
           kubectl wait --for=condition=established --timeout=60s crd/secretproviderclasses.secrets-store.csi.x-k8s.io
