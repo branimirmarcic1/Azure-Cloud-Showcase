@@ -1,5 +1,3 @@
-name: Build and Deploy to Azure AKS
-
 on:
   push:
     branches:
@@ -7,63 +5,49 @@ on:
   workflow_dispatch:
 
 env:
-  ACR_NAME: showcaseacrbm123 # OBAVEZNO: Zamijenite s imenom vašeg ACR-a
+  ACR_NAME: showcaseacrbm123
   RESOURCE_GROUP: AzureShowcase-RG
   AKS_CLUSTER_NAME: showcase-aks-cluster
 
 jobs:
-  build-and-push:
+  deploy-infra:
     runs-on: ubuntu-latest
+    outputs:
+      identityClientId: ${{ steps.deploy-bicep.outputs.identityClientId }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Log in to Azure
-        uses: azure/login@v1
+      - uses: actions/checkout@v3
+      - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Deploy Bicep Infrastructure
+        id: deploy-bicep
+        run: |
+          deployment_output=$(az deployment sub create --location northeurope --template-file ./infra/main.bicep --parameters ./infra/main.bicepparam -o json)
+          clientId=$(echo $deployment_output | jq -r '.properties.outputs.identityClientId.value')
+          echo "identityClientId=$clientId" >> $GITHUB_OUTPUT
 
-      - name: Log in to Azure Container Registry
+  build-and-deploy-app:
+    runs-on: ubuntu-latest
+    needs: deploy-infra
+    steps:
+      - uses: actions/checkout@v3
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Set AKS context
+        run: az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.AKS_CLUSTER_NAME }} --overwrite-existing
+      - name: Log in to ACR
         run: az acr login --name ${{ env.ACR_NAME }}
-
-      - name: Build and push OrderService
+      - name: Build and Push Images
         run: |
           docker build -t ${{ env.ACR_NAME }}.azurecr.io/orderservice:${{ github.sha }} -f ./src/OrderService/Dockerfile .
           docker push ${{ env.ACR_NAME }}.azurecr.io/orderservice:${{ github.sha }}
-          
-      - name: Build and push InventoryService
-        run: |
           docker build -t ${{ env.ACR_NAME }}.azurecr.io/inventoryservice:${{ github.sha }} -f ./src/InventoryService/Dockerfile .
           docker push ${{ env.ACR_NAME }}.azurecr.io/inventoryservice:${{ github.sha }}
-
-  deploy-to-aks:
-    runs-on: ubuntu-latest
-    needs: build-and-push
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Log in to Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Set AKS context
-        run: az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.AKS_CLUSTER_NAME }} --overwrite-existing
-
-      - name: Replace placeholders in Kubernetes manifests
+      - name: Replace placeholders
         run: |
-          sed -i 's|__ACR_NAME__|${{ env.ACR_NAME }}|g' ./k8s/deployment.yml
-          sed -i 's|__IMAGE_TAG__|${{ github.sha }}|g' ./k8s/deployment.yml
-          sed -i 's|__ACR_NAME__|${{ env.ACR_NAME }}|g' ./k8s/inventory-deployment.yml
-          sed -i 's|__IMAGE_TAG__|${{ github.sha }}|g' ./k8s/inventory-deployment.yml
-
-      # FINALNI ISPRAVAK: Koristimo 'addon update' umjesto 'enable-addons'
-      - name: Update/Verify Key Vault Addon on AKS
-        run: |
-          az aks addon update --addon azure-keyvault-secrets-provider --name ${{ env.AKS_CLUSTER_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
-          echo "Waiting 30 seconds for addon to stabilize..."
-          sleep 30
-
-      - name: Deploy all manifests to AKS
+          sed -i "s|__ACR_NAME__|${{ env.ACR_NAME }}|g" ./k8s/*.yml
+          sed -i "s|__IMAGE_TAG__|${{ github.sha }}|g" ./k8s/*.yml
+          sed -i "s|__IDENTITY_CLIENT_ID__|${{ needs.deploy-infra.outputs.identityClientId }}|g" ./k8s/secret-provider.yml
+      - name: Deploy to AKS
         run: kubectl apply -f ./k8s/
