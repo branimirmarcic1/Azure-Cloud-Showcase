@@ -1,3 +1,4 @@
+name: Build and Deploy to Azure AKS
 
 on:
   push:
@@ -57,19 +58,12 @@ jobs:
           sed -i 's|__ACR_NAME__|${{ env.ACR_NAME }}|g' ./k8s/inventory-deployment.yml
           sed -i 's|__IMAGE_TAG__|${{ github.sha }}|g' ./k8s/inventory-deployment.yml
 
-      - name: Deploy to AKS
+      # FINALNI ISPRAVAK: Osiguravamo da je addon spreman PRIJE deploymenta
+      - name: Enable/Verify Key Vault Addon on AKS
         run: |
-          # FINALNI ISPRAVAK: Prvo preuzimamo CRD, a zatim ga primjenjujemo
-          echo "Preuzimam potrebne CRD-ove za Secret Store..."
-          curl -sSL -o secretproviderclasses.yaml "https://raw.githubusercontent.com/Azure/secrets-store-csi-driver-provider-azure/main/charts/csi-secrets-store-provider-azure/crds/csi.secrets-store.k8s.io_secretproviderclasses.yaml"
-          
-          echo "Primjenjujem CRD..."
-          kubectl apply -f secretproviderclasses.yaml
-          
-          # Čekamo da se CRD "ustabili" u klasteru
-          kubectl wait --for=condition=established --timeout=60s crd/secretproviderclasses.secrets-store.csi.x-k8s.io
-          
-          echo "CRD je spreman. Primjenjujem ostatak manifesta..."
+          az aks enable-addons --addons azure-keyvault-secrets-provider --name ${{ env.AKS_CLUSTER_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
+          echo "Waiting 30 seconds for addon to stabilize..."
+          sleep 30
 
-          # Sada primjenjujemo SVE naše manifest datoteke
-          kubectl apply -f ./k8s/
+      - name: Deploy all manifests to AKS
+        run: kubectl apply -f ./k8s/
