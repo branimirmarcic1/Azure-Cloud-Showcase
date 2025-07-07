@@ -59,4 +59,13 @@ jobs:
           sed -i 's|__IMAGE_TAG__|${{ github.sha }}|g' ./k8s/inventory-deployment.yml
 
       - name: Deploy to AKS
-        run: kubectl apply -f ./k8s/
+        run: |
+          # ISPRAVAK: Prvo primjenjujemo SecretProviderClass i čekamo
+          kubectl apply -f ./k8s/secret-provider.yml
+          sleep 15
+          
+          # Zatim primjenjujemo ostatak manifesta
+          kubectl apply -f ./k8s/deployment.yml
+          kubectl apply -f ./k8s/service.yml
+          kubectl apply -f ./k8s/inventory-deployment.yml
+          kubectl apply -f ./k8s/inventory-service.yml
