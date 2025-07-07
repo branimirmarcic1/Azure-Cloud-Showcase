@@ -4,9 +4,9 @@ using InventoryService.Data;
 var builder = WebApplication.CreateBuilder(args);
 
 var secretPath = "/mnt/secrets-store/sql-connection-string";
-var connectionString = builder.Environment.IsProduction()
+var connectionString = builder.Environment.IsProduction() && File.Exists(secretPath)
     ? File.ReadAllText(secretPath)
-    : builder.Configuration.GetConnectionString("DefaultConnection"); 
+    : builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<InventoryDbContext>(options =>
 {
@@ -26,25 +26,25 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-//if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 
-try
+if (!string.IsNullOrEmpty(connectionString))
 {
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
-    await dbContext.Database.MigrateAsync();
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"--> Greška prilikom primjene migracija za InventoryService: {ex.Message}");
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
+        await dbContext.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"--> Greška prilikom primjene migracija za InventoryService: {ex.Message}");
+    }
 }
 
 app.Run();

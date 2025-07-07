@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenTelemetry.Metrics;
 using OrderService.Data;
 using Polly;
+using Polly.Extensions.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,9 +16,9 @@ builder.Services.AddOpenTelemetry()
     });
 
 var secretPath = "/mnt/secrets-store/sql-connection-string";
-var connectionString = builder.Environment.IsProduction()
+var connectionString = builder.Environment.IsProduction() && File.Exists(secretPath)
     ? File.ReadAllText(secretPath)
-    : builder.Configuration.GetConnectionString("DefaultConnection"); 
+    : builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<OrderDbContext>(options =>
 {
@@ -27,10 +28,10 @@ builder.Services.AddDbContext<OrderDbContext>(options =>
             maxRetryCount: 5,
             maxRetryDelay: TimeSpan.FromSeconds(30),
             errorNumbersToAdd: null);
+        sqlOptions.CommandTimeout(120);
     });
 });
 
-// Konfiguracija MassTransit-a
 builder.Services.AddMassTransit(x =>
 {
     x.UsingRabbitMq((context, cfg) =>
@@ -57,26 +58,26 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-//if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.MapPrometheusScrapingEndpoint();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 
-try
+if (!string.IsNullOrEmpty(connectionString))
 {
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
-    await dbContext.Database.MigrateAsync();
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"--> Greška prilikom primjene migracija: {ex.Message}");
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
+        await dbContext.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"--> Greška prilikom primjene migracija za OrderService: {ex.Message}");
+    }
 }
 
 app.Run();
