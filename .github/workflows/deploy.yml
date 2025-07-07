@@ -58,10 +58,10 @@ jobs:
           sed -i 's|__ACR_NAME__|${{ env.ACR_NAME }}|g' ./k8s/inventory-deployment.yml
           sed -i 's|__IMAGE_TAG__|${{ github.sha }}|g' ./k8s/inventory-deployment.yml
 
-      # FINALNI ISPRAVAK: Osiguravamo da je addon spreman PRIJE deploymenta
-      - name: Enable/Verify Key Vault Addon on AKS
+      # FINALNI ISPRAVAK: Koristimo 'addon update' umjesto 'enable-addons'
+      - name: Update/Verify Key Vault Addon on AKS
         run: |
-          az aks enable-addons --addons azure-keyvault-secrets-provider --name ${{ env.AKS_CLUSTER_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
+          az aks addon update --addon azure-keyvault-secrets-provider --name ${{ env.AKS_CLUSTER_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
           echo "Waiting 30 seconds for addon to stabilize..."
           sleep 30
 
