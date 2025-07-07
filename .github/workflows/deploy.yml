@@ -58,25 +58,16 @@ jobs:
           sed -i 's|__ACR_NAME__|${{ env.ACR_NAME }}|g' ./k8s/inventory-deployment.yml
           sed -i 's|__IMAGE_TAG__|${{ github.sha }}|g' ./k8s/inventory-deployment.yml
 
-      - name: Deploy to AKS with Retry
+      - name: Deploy to AKS
         run: |
-          # FINALNI ISPRAVAK: Koristimo petlju za ponovne pokušaje
-          # Ovo rješava "race condition" gdje CRD još nije spreman.
+          # FINALNI ISPRAVAK: Ručno instaliramo CRD-ove za Secret Store CSI Driver
+          echo "Instaliram potrebne CRD-ove za Secret Store..."
+          curl -sSL https://raw.githubusercontent.com/Azure/secrets-store-csi-driver-provider-azure/main/charts/csi-secrets-store-provider-azure/crds/csi.secrets-store.k8s.io_secretproviderclasses.yaml | kubectl apply -f -
           
-          echo "Pokušavam primijeniti SecretProviderClass..."
-          for i in {1..5}; do
-            kubectl apply -f ./k8s/secret-provider.yml && break
-            echo "Čekam da SecretProviderClass CRD bude dostupan... (Pokušaj $i od 5)"
-            sleep 20
-          done
+          # Čekamo da se CRD "ustabili" u klasteru
+          kubectl wait --for=condition=established --timeout=60s crd/secretproviderclasses.secrets-store.csi.x-k8s.io
           
-          # Finalna provjera - ako i dalje ne uspije, workflow će pasti s jasnom greškom
-          kubectl apply -f ./k8s/secret-provider.yml
-          
-          echo "SecretProviderClass uspješno primijenjen. Nastavljam s ostatkom deploymenta..."
-          
-          # Primjenjujemo ostatak manifesta
-          kubectl apply -f ./k8s/deployment.yml
-          kubectl apply -f ./k8s/service.yml
-          kubectl apply -f ./k8s/inventory-deployment.yml
-          kubectl apply -f ./k8s/inventory-service.yml
+          echo "CRD je spreman. Primjenjujem ostatak manifesta..."
+
+          # Sada primjenjujemo SVE naše manifest datoteke
+          kubectl apply -f ./k8s/
