@@ -30,7 +30,7 @@ jobs:
         run: |
           docker build -t ${{ env.ACR_NAME }}.azurecr.io/orderservice:${{ github.sha }} -f ./src/OrderService/Dockerfile .
           docker push ${{ env.ACR_NAME }}.azurecr.io/orderservice:${{ github.sha }}
-
+          
       - name: Build and push InventoryService
         run: |
           docker build -t ${{ env.ACR_NAME }}.azurecr.io/inventoryservice:${{ github.sha }} -f ./src/InventoryService/Dockerfile .

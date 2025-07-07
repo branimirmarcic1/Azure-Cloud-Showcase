@@ -3,7 +3,11 @@ using InventoryService.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var secretPath = "/mnt/secrets-store/sql-connection-string";
+var connectionString = builder.Environment.IsProduction()
+    ? File.ReadAllText(secretPath)
+    : builder.Configuration.GetConnectionString("DefaultConnection"); 
+
 builder.Services.AddDbContext<InventoryDbContext>(options =>
 {
     options.UseSqlServer(connectionString, sqlOptions =>

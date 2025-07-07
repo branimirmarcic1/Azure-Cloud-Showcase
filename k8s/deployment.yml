@@ -17,3 +17,16 @@ spec:
         image: __ACR_NAME__.azurecr.io/orderservice:__IMAGE_TAG__
         ports:
         - containerPort: 8080
+        # Montiramo tajne kao datoteke unutar poda
+        volumeMounts:
+        - name: secrets-store
+          mountPath: "/mnt/secrets-store"
+          readOnly: true
+      # Definiramo volumen koji koristi CSI driver
+      volumes:
+      - name: secrets-store
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: "azure-kv-secret-provider"

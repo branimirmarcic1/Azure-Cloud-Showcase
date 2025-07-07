@@ -14,7 +14,11 @@ builder.Services.AddOpenTelemetry()
         metricsBuilder.AddPrometheusExporter();
     });
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var secretPath = "/mnt/secrets-store/sql-connection-string";
+var connectionString = builder.Environment.IsProduction()
+    ? File.ReadAllText(secretPath)
+    : builder.Configuration.GetConnectionString("DefaultConnection"); 
+
 builder.Services.AddDbContext<OrderDbContext>(options =>
 {
     options.UseSqlServer(connectionString, sqlOptions =>

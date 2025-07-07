@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: inventoryservice-service
 spec:
-  type: ClusterIP # Interni servis, ne treba javnu IP adresu
+  type: ClusterIP 
   selector:
     app: inventoryservice
   ports:
